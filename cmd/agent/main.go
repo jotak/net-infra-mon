@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 
 	"github.com/sirupsen/logrus"
@@ -46,8 +47,19 @@ func main() {
 		log.Infof("Log level set to %s", cfg.LogLevel)
 	}
 
-	// Async call
-	jobs.Run(context.Background())
+	// Pprof
+	if cfg.PProfPort > 0 {
+		go func() {
+			log.WithField("port", cfg.PProfPort).Info("starting PProf HTTP listener")
+			log.WithError(http.ListenAndServe(fmt.Sprintf(":%d", cfg.PProfPort), nil)).
+				Error("PProf HTTP listener stopped working")
+		}()
+	}
 
+	go func() {
+		jobs.Run(context.Background())
+	}()
+
+	// Blocking call
 	server.Start(context.Background(), cfg)
 }
